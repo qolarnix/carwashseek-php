@@ -5,7 +5,9 @@
         "guzzlehttp/guzzle": "^7.7",
         "illuminate/database": "^10.15",
         "fakerphp/faker": "^1.23",
-        "glacial/template": "^2.0"
+        "glacial/template": "^2.0",
+        "firebase/php-jwt": "^6.10",
+        "phpmailer/phpmailer": "^6.9"
     },
     "scripts": {
         "dev": [

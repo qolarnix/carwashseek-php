@@ -8,22 +8,11 @@ use Illuminate\Database\Capsule\Manager;
 Manager::schema()->drop('users');
 Manager::schema()->create('users', function($t) {
     $t->increments('id');
-    $t->string('email')->unique();
+    $t->string('name');
     $t->string('username')->unique();
-    $t->string('fullname')->nullable();
-    $t->timestamps();
+    $t->string('email')->unique();
+    $t->timestamp('email_verified_at')->nullable();
+    $t->rememberToken();
+    $t->timestamp('created_at')->useCurrent();
+    $t->timestamp('updated_at')->useCurrent();
 });
-
-$faker = Faker\Factory::create();
-
-$users = [];
-for($i = 0; $i < 10; $i++) {
-    $user = [
-        'email' => $faker->email(),
-        'username' => $faker->userName(),
-        'fullname' => $faker->firstName().' '.$faker->lastName(),
-    ];
-    $users[] = $user;
-}
-
-Manager::table('users')->insert($users);
