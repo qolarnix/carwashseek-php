@@ -9,14 +9,14 @@ use PHPMailer\PHPMailer\PHPMailer;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-function createMagicToken(string $uuid): string {
+function createMagicToken(string $email): string {
     $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
 
     $issued = time();
     $expires = $issued + (5 * 60);
 
     $payload = [
-        'uuid' => $uuid,
+        'email' => $email,
         'iat' => $issued,
         'exp' => $expires
     ];
@@ -24,8 +24,8 @@ function createMagicToken(string $uuid): string {
     return JWT::encode($payload, $key, 'HS256');
 }
 
-function sendMagicLink(string $email, string $uuid) {
-    $token = createMagicToken($uuid);
+function sendMagicLink(string $email) {
+    $token = createMagicToken($email);
     $link = 'http://localhost:3000/magic?token=' . $token;
 
     $mail = new PHPMailer();
@@ -47,12 +47,12 @@ function sendMagicLink(string $email, string $uuid) {
     $mail->send();
 }
 
-function verifyMagicLink(string $token): object {
+function verifyMagicLink(string $token): string|object {
     $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
 
     try {
         $decode = JWT::decode($token, new Key($key, 'HS256'));
-        return $decode->uuid;
+        return $decode;
     }
     catch(ExpiredException $e) {
         error_log("Magic link failed: " . $e);
@@ -64,16 +64,39 @@ function verifyMagicLink(string $token): object {
     }
 }
 
-function testMagicLink() {
-    $data = random_bytes(16);
-    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
-    $test_uuid = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+// function testMagicLink() {
+//     $test_token = createMagicToken('test@email.com');
+//     sendMagicLink('test@email.com');
 
-    $test_token = createMagicToken($test_uuid);
-    sendMagicLink('test@email.com', $test_uuid);
+//     $result = verifyMagicLink($test_token);
+//     print_r($result);
+// }
+// testMagicLink();
 
-    $result = verifyMagicLink($test_token);
-    print_r($result);
+function createAccessToken(string $email) {
+    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
+
+    $issued = time();
+    $expires = $issued + (60 * 60);
+    $payload = [
+        'email' => $email,
+        'iat' => $issued,
+        'exp' => $expires 
+    ];
+
+    return JWT::encode($payload, $key, 'HS256');
 }
-testMagicLink();
+
+function createRefreshToken(string $email) {
+    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
+
+    $issued = time();
+    $expires = $issued + (24 * 60 * 60);
+    $payload = [
+        'email' => $email,
+        'iat' => $issued,
+        'exp' => $expires
+    ];
+
+    return JWT::encode($payload, $key, 'HS256');
+}
