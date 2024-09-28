@@ -14,7 +14,7 @@ echo $view->render('header');
 
                 <form action="" class="flex flex-col gap-2 items-start">
                     <input type="email" placeholder="example@gmail.com" class="rounded">
-                    <input type="submit" value="Get link" class="bg-blue-600 text-white p-3 rounded">
+                    <input type="submit" value="Get link" class="bg-blue-600 text-white p-2 rounded">
                 </form>
             </div>
         </div>
