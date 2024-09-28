@@ -2,15 +2,13 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
-
 use Firebase\JWT\ExpiredException;
 use PHPMailer\PHPMailer\PHPMailer;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 function createMagicToken(string $email): string {
-    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
+    $key = getenv('MAGIC_SECRET');
 
     $issued = time();
     $expires = $issued + (5 * 60);
@@ -48,7 +46,7 @@ function sendMagicLink(string $email) {
 }
 
 function verifyMagicLink(string $token): string|object {
-    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
+    $key = getenv('MAGIC_SECRET');
 
     try {
         $decode = JWT::decode($token, new Key($key, 'HS256'));
@@ -64,39 +62,67 @@ function verifyMagicLink(string $token): string|object {
     }
 }
 
-// function testMagicLink() {
-//     $test_token = createMagicToken('test@email.com');
-//     sendMagicLink('test@email.com');
-
-//     $result = verifyMagicLink($test_token);
-//     print_r($result);
-// }
-// testMagicLink();
-
-function createAccessToken(string $email) {
-    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
-
+function createLoginTokens(string $email): array {
+    $key = getenv('SESSION_SECRET');
     $issued = time();
-    $expires = $issued + (60 * 60);
-    $payload = [
-        'email' => $email,
-        'iat' => $issued,
-        'exp' => $expires 
-    ];
 
-    return JWT::encode($payload, $key, 'HS256');
+    return [
+        'access' => JWT::encode([
+            'email' => $email,
+            'iat' => $issued,
+            'exp' => $issued + (60 * 60)
+        ], $key, 'HS256'),
+        'refresh' => JWT::encode([
+            'email' => $email,
+            'iat' => $issued,
+            'exp' => $issued + (24 * 60 * 60)
+        ], $key, 'HS256'),
+    ];
 }
 
-function createRefreshToken(string $email) {
-    $key = 'e4245ab365b60a312b0f73e821f97532ec1afa330926a0d001a065779a6129b0';
+function setLoginTokens(string $access, string $refresh) {
+    setcookie('access_token', $access, time() + (60 * 60), '/', '', true, true);
+    setcookie('refresh_token', $refresh, time() + (24 * 60 * 60), '/', '', true, true);
+}
 
-    $issued = time();
-    $expires = $issued + (24 * 60 * 60);
-    $payload = [
-        'email' => $email,
-        'iat' => $issued,
-        'exp' => $expires
+/**
+ * Logout
+ */
+function revokeClientTokens() {
+    if(isset($_COOKIE['access_token'])) {
+        unset($_COOKE['access_token']);
+        setcookie('access_token', '', -1, '/');
+    }
+
+    if(isset($_COOKIE['refresh_token'])) {
+        unset($_COOKE['refresh_token']);
+        setcookie('refresh_token', '', -1, '/');
+    }
+}
+
+/**
+ * Auth middleware
+ */
+function verifyClientTokens() {
+    if(!isset($_COOKIE['access_token']) || !isset($_COOKIE['refresh_token'])) {
+        error_log('User is not logged in, redirect to login.');
+        return false;
+    }
+
+    $key = getenv('SESSION_SECRET');
+    $tokens = [
+        'access' => $_COOKIE['access_token'],
+        'refresh' => $_COOKIE['refresh_token']
     ];
 
-    return JWT::encode($payload, $key, 'HS256');
+    try {
+        $decoded = JWT::decode($tokens['access'], new Key($key, 'HS256'));
+        return $decoded->email;
+    }
+    catch(ExpiredException $e) {
+        error_log('Tokens expired, redirect to login: ' . $e);
+    }
+    catch(Exception $e) {
+        error_log('Unable to validate tokens, redirect to login: ' . $e);
+    }
 }
