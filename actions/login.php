@@ -19,6 +19,11 @@ if(empty($user_email)) {
 }
 else {
     try {
+        if(validateEmail($user_email) === false) {
+            throw new Exception('Invalid email');
+            return false;
+        }
+
         user_create([
             'email' => $user_email,
             'username' => strtok($user_email, '@'),

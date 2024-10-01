@@ -46,7 +46,7 @@ $router->get('/logout', function() {
     revokeClientTokens();
 });
 
-$router->before('GET|POST', '/account/.*', function() {
+$router->before('GET|POST', '/account(/.*)?', function() {
     $session = verifyClientTokens();
     if($session === false) {
         header('Location: ' . '/login');
