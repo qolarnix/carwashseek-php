@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
 
-if(php_sapi_name() !== 'cli') $env->load();
+if(@$_SERVER['REQUEST_METHOD'] !== "POST" && php_sapi_name() !== 'cli') {
+    $env->load();
+}
 
 use Illuminate\Database\Capsule\Manager;
 

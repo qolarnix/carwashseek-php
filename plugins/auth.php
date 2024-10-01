@@ -7,8 +7,13 @@ use PHPMailer\PHPMailer\PHPMailer;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
+if($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $env = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+    $env->load();
+}
+
 function createMagicToken(string $email): string {
-    $key = getenv('MAGIC_SECRET');
+    $key = $_ENV['MAGIC_SECRET'];
 
     $issued = time();
     $expires = $issued + (5 * 60);
@@ -40,13 +45,16 @@ function sendMagicLink(string $email) {
     $mail->addAddress($email);
     $mail->isHTML(true);
     $mail->Subject = "Your one-click login link";
-    $mail->Body = "Click here to login: " . $link;
+    $mail->Body = <<<HTML
+        <p>Click here to login: </p>
+        <a href="$link" target="_block">$link</a>
+    HTML;
 
     $mail->send();
 }
 
 function verifyMagicLink(string $token): string|object {
-    $key = getenv('MAGIC_SECRET');
+    $key = $_ENV['MAGIC_SECRET'];
 
     try {
         $decode = JWT::decode($token, new Key($key, 'HS256'));
@@ -63,7 +71,7 @@ function verifyMagicLink(string $token): string|object {
 }
 
 function createLoginTokens(string $email): array {
-    $key = getenv('SESSION_SECRET');
+    $key = $_ENV['SESSION_SECRET'];
     $issued = time();
 
     return [
@@ -81,8 +89,15 @@ function createLoginTokens(string $email): array {
 }
 
 function setLoginTokens(string $access, string $refresh) {
-    setcookie('access_token', $access, time() + (60 * 60), '/', '', true, true);
-    setcookie('refresh_token', $refresh, time() + (24 * 60 * 60), '/', '', true, true);
+    $session = verifyClientTokens();
+
+    if($session === false) {
+        setcookie('access_token', $access, time() + (60 * 60), '/', '', true, true);
+        setcookie('refresh_token', $refresh, time() + (24 * 60 * 60), '/', '', true, true);
+    }
+    else {
+        error_log('User already logged in, refusing to set tokens again.');
+    }
 }
 
 /**
@@ -109,7 +124,7 @@ function verifyClientTokens() {
         return false;
     }
 
-    $key = getenv('SESSION_SECRET');
+    $key = $_ENV['SESSION_SECRET'];
     $tokens = [
         'access' => $_COOKIE['access_token'],
         'refresh' => $_COOKIE['refresh_token']
@@ -121,8 +136,34 @@ function verifyClientTokens() {
     }
     catch(ExpiredException $e) {
         error_log('Tokens expired, redirect to login: ' . $e);
+        return false;
     }
     catch(Exception $e) {
         error_log('Unable to validate tokens, redirect to login: ' . $e);
+        return false;
+    }
+}
+
+function getSession() {
+    if(!isset($_COOKIE['access_token']) || !isset($_COOKIE['refresh_token'])) {
+        error_log('Unable to get user session. Is the user logged in?');
+        return false;
+    }
+
+    $key = $_ENV['SESSION_SECRET'];
+    $token = $_COOKIE['access_token'];
+
+    try {
+        $decoded = JWT::decode($token, new Key($key, 'HS256'));
+        $user = user_by_email($decoded->email);
+        return $user;
+    }
+    catch(ExpiredException $e) {
+        error_log('Tokens expired, is the user logged in?' . $e);
+        return false;
+    }
+    catch(Exception $e) {
+        error_log('Unable to validate tokens, is the user logged in?' . $e);
+        return false;
     }
 }
