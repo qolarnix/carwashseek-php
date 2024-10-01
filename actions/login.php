@@ -25,8 +25,18 @@ else {
         ]);
     
         sendMagicLink($user_email);
+
+        echo $template->render('auth-success', [
+            'title' => 'Magic Link Sent',
+            'desc' => 'Please check your email for the login link.'
+        ]);
     }
     catch(Exception $e) {
         error_log('Unable to complete login: ' . $e);
+
+        echo $template->render('auth-error', [
+            'title' => 'Error',
+            'desc' => 'There was an error processing your request. Please refresh the browser and try again.'
+        ]);
     }
 }

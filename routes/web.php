@@ -24,7 +24,7 @@ $router->match('GET|POST', '/magic', function() {
             $client_tokens['refresh']
         );
 
-        print_r($verified_user);
+        header('Location: ' . '/account');
     }
     else {
         revokeClientTokens();
@@ -43,7 +43,7 @@ $router->before('GET|POST', '/account/.*', function() {
     }
 });
 
-$router->get('/account/test', function() use($user) {
+$router->get('/account', function() use($user) {
     echo 'you are authenticated! <br>';
 
     echo '<pre>';
