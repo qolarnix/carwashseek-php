@@ -53,7 +53,7 @@ function sendMagicLink(string $email) {
     $mail->send();
 }
 
-function verifyMagicLink(string $token): string|object {
+function verifyMagicLink(string $token) {
     $key = $_ENV['MAGIC_SECRET'];
 
     try {

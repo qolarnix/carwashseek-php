@@ -14,17 +14,27 @@ $router->get('/login', function() use($template) {
 
 $router->match('GET|POST', '/magic', function() {
     if(isset($_GET['token'])) {
-        $token = $_GET['token'];
+        try {
+            $token = $_GET['token'];
+            
+            $verified_user = verifyMagicLink($token);
+            if($verified_user === false) {
+                revokeClientTokens();
+                header('Location: ' . '/login');
+            }
 
-        $verified_user = verifyMagicLink($token);
-        $client_tokens = createLoginTokens($verified_user->email);
-
-        setLoginTokens(
-            $client_tokens['access'], 
-            $client_tokens['refresh']
-        );
-
-        header('Location: ' . '/account');
+            $client_tokens = createLoginTokens($verified_user->email);
+            setLoginTokens(
+                $client_tokens['access'], 
+                $client_tokens['refresh']
+            );
+            header('Location: ' . '/account');
+        }
+        catch(Exception $e) {
+            error_log('Magic link failed: '.$e);
+            revokeClientTokens();
+            header('Location: ' . '/login');
+        }
     }
     else {
         revokeClientTokens();
